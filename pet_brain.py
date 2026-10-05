@@ -20,7 +20,7 @@ from gestures import GestureDetector
 from naughty_ai import NaughtyAI
 
 
-def vision_loop(eyes, stop, show_cam=False):
+def vision_loop(eyes, stop, show_cam=False, frame_holder=None):
     try:
         cam = Camera()
         rec = FaceRecognizer()
@@ -263,15 +263,11 @@ def vision_loop(eyes, stop, show_cam=False):
                 hud = f"Objects: {len(detected_objects)} | Gesture: {g_str} | Lang: English"
                 cv2.putText(display, hud, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 255, 255), 2)
 
-                cv2.imshow("Pet Brain Vision Feed (Faces + Gestures + Objects)", display)
-                key = cv2.waitKey(1) & 0xFF
-                if key in (27, ord('q')):
-                    break
+                if frame_holder is not None:
+                    frame_holder[0] = display
 
             time.sleep(0.02)
         cam.release()
-        if show_cam:
-            cv2.destroyAllWindows()
     except Exception:
         traceback.print_exc()
 
@@ -280,11 +276,21 @@ def main():
     show_cam = "--cam" in sys.argv
     eyes = Eyes()
     stop = threading.Event()
-    threading.Thread(target=vision_loop, args=(eyes, stop, show_cam), daemon=True).start()
+    frame_holder = [None] if show_cam else None
+
+    threading.Thread(target=vision_loop, args=(eyes, stop, show_cam, frame_holder), daemon=True).start()
     try:
-        (run_lcd if "--lcd" in sys.argv else run_tk)(eyes)
+        if "--lcd" in sys.argv:
+            run_lcd(eyes)
+        else:
+            get_frame_func = (lambda: frame_holder[0]) if show_cam else None
+            run_tk(eyes, get_cam_frame=get_frame_func)
     finally:
         stop.set()
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

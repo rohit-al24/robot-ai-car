@@ -614,22 +614,53 @@ class Eyes:
         return img
 
 
-def run_tk(eyes, tick=None, fps=20, scale=2):
+def run_tk(eyes, tick=None, fps=20, scale=2, get_cam_frame=None):
     import tkinter as tk
-    from PIL import ImageTk
+    import cv2
+    from PIL import ImageTk, Image
     root = tk.Tk()
-    root.title("Toy Robot Eyes (Pixar & Eilik 3D Style)")
-    label = tk.Label(root, bg="black")
-    label.pack()
+    root.title("Griffin Pet Robot (Eyes & Live Vision)")
+    root.configure(bg="black")
+
+    main_frame = tk.Frame(root, bg="black")
+    main_frame.pack(padx=10, pady=10)
+
+    # Eyes display
+    eyes_label = tk.Label(main_frame, bg="black")
+    eyes_label.pack(side=tk.LEFT, padx=5)
+
+    # Optional Camera display
+    cam_label = None
+    if get_cam_frame:
+        cam_label = tk.Label(main_frame, bg="black")
+        cam_label.pack(side=tk.RIGHT, padx=5)
+
     delay = int(1000 / fps)
 
     def step():
         if tick:
             tick()
-        img = eyes.render().resize((eyes.w * scale, eyes.h * scale))
-        photo = ImageTk.PhotoImage(img)
-        label.configure(image=photo)
-        label.image = photo
+        # 1. Update Eyes
+        img_eyes = eyes.render().resize((eyes.w * scale, eyes.h * scale))
+        photo_eyes = ImageTk.PhotoImage(img_eyes)
+        eyes_label.configure(image=photo_eyes)
+        eyes_label.image = photo_eyes
+
+        # 2. Update Camera Feed if enabled
+        if cam_label and get_cam_frame:
+            bgr = get_cam_frame()
+            if bgr is not None:
+                rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+                img_cam = Image.fromarray(rgb)
+                # Match eye window height
+                ch, cw = rgb.shape[:2]
+                target_h = eyes.h * scale
+                target_w = int(cw * (target_h / float(ch)))
+                img_cam = img_cam.resize((target_w, target_h))
+                photo_cam = ImageTk.PhotoImage(img_cam)
+                cam_label.configure(image=photo_cam)
+                cam_label.image = photo_cam
+
         root.after(delay, step)
 
     step()
