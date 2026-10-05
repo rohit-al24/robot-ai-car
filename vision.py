@@ -13,23 +13,32 @@ class Camera:
         self.size = size
         self.picam = None
         self.cap = None
-        if source == "picam":
+
+        # 1. First try Raspberry Pi Official CSI Ribbon Camera (libcamera / Picamera2)
+        try:
             from picamera2 import Picamera2
             self.picam = Picamera2()
             cfg = self.picam.create_video_configuration(
                 main={"size": size, "format": "BGR888"})
             self.picam.configure(cfg)
             self.picam.start()
-        else:
-            if isinstance(source, int):
-                # Try DirectShow first on Windows, fallback to default if needed
-                self.cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
-                if not self.cap.isOpened():
-                    self.cap = cv2.VideoCapture(source)
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, size[0])
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, size[1])
-            else:
-                self.cap = cv2.VideoCapture(source)
+            print("[Camera] Raspberry Pi CSI Ribbon Camera (Picamera2) Active!")
+            return
+        except Exception:
+            self.picam = None
+
+        # 2. Fallback to USB Webcam / V4L2 / DirectShow
+        try:
+            # Try V4L2 backend on Linux (Raspberry Pi) first for fastest FPS
+            self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+            if not self.cap.isOpened():
+                self.cap = cv2.VideoCapture(0)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, size[0])
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, size[1])
+            if self.cap.isOpened():
+                print("[Camera] USB / V4L2 Video Device Active!")
+        except Exception as e:
+            print(f"[Camera Warning] {e}")
 
     def read(self):
         if self.picam is not None:
