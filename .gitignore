@@ -1,0 +1,17 @@
+# Virtual environment
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Local runtime & caches
+voice_cache/
+voices/*.mp3
+*.mp3
+
+# IDE & system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
